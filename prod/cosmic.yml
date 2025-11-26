@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cosmic
+  namespace: argocd
+spec:
+  destination:
+    namespace: cosmic
+    server: https://kubernetes.default.svc
+  source:
+    path: k8s/Base/
+    repoURL: git@github.com:jojobobby/TidanRealms-Sourcefiles.git
+    targetRevision: HEAD
+  sources: []
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
