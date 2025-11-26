@@ -9,7 +9,7 @@ spec:
     server: https://kubernetes.default.svc
   source:
     path: k8s/Production/
-    repoURL: git@github.com:jojobobby/TidanRealms-Sourcefiles.git
+    repoURL: git@github.com:jojobobby/Cosmic-LTS.git
     targetRevision: HEAD
   sources: []
   project: default
@@ -19,3 +19,4 @@ spec:
       selfHeal: false
     syncOptions:
       - ApplyOutOfSyncOnly=true
+      
