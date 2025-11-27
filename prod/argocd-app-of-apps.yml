@@ -1,22 +1,22 @@
 apiVersion: argoproj.io/v1alpha1
-  kind: Application
-  metadata:
-    name: app-of-apps
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+spec:
+  destination:
     namespace: argocd
-  spec:
-    destination:
-      namespace: argocd
-      server: https://kubernetes.default.svc
-    source:
-      path: prod/
-      repoURL: git@github.com:jojobobby/Arcana-Argocd-Apps.git
-      targetRevision: HEAD
-      directory:
-        recurse: true
-    project: default
-    syncPolicy:
-      automated:
-        prune: true
-        selfHeal: true
-      syncOptions:
-        - ApplyOutOfSyncOnly=true
+    server: https://kubernetes.default.svc
+  source:
+    path: prod/
+    repoURL: git@github.com:jojobobby/Arcana-Argocd-Apps.git
+    targetRevision: HEAD
+    directory:
+      recurse: true
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
