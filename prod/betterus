@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: betterus
+  namespace: argocd
+spec:
+  destination:
+    namespace: betterus-production
+    server: https://kubernetes.default.svc
+  source:
+    path: k8s/production/
+    repoURL: git@github.com:jojobobby/BetterUs.git
+    targetRevision: production
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
