@@ -8,7 +8,7 @@ spec:
     namespace: betterus-development
     server: https://kubernetes.default.svc
   source:
-    path: k8s/Development/
+    path: k8s/development/
     repoURL: git@github.com:jojobobby/BetterUs.git
     targetRevision: development
   project: default
