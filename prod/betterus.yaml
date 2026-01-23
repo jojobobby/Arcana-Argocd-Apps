@@ -10,7 +10,7 @@ spec:
   source:
     path: k8s/production/
     repoURL: git@github.com:jojobobby/BetterUs.git
-    targetRevision: production
+    targetRevision: main
   project: default
   syncPolicy:
     automated:
