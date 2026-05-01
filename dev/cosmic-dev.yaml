@@ -19,4 +19,11 @@ spec:
     syncOptions:
       - ApplyOutOfSyncOnly=true
       - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: monitoring.coreos.com
+      kind: Prometheus
+      jsonPointers:
+        - /status
 
