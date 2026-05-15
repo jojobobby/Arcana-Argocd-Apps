@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arcana-dev
+  namespace: argocd
+spec:
+  destination:
+    namespace: arcana-development
+    server: https://kubernetes.default.svc
+  source:
+    path: k8s
+    repoURL: git@github.com:jojobobby/Arcana.git
+    targetRevision: develop
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
