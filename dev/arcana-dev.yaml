@@ -3,18 +3,39 @@ kind: Application
 metadata:
   name: arcana-dev
   namespace: argocd
+  # Default ArgoCD finalizer so deleting the Application cascades into
+  # the managed resources rather than orphaning them.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
+  project: default
   destination:
     namespace: arcana-development
     server: https://kubernetes.default.svc
+  # Single Helm chart in the Arcana repo at k8s/Chart.yaml. ArgoCD
+  # renders it with the base values plus the dev overlay; the CI deploy
+  # job rewrites values.development.yaml image tags on each push.
   source:
-    path: k8s
     repoURL: git@github.com:jojobobby/Arcana.git
     targetRevision: develop
-  project: default
+    path: k8s
+    helm:
+      releaseName: arcana
+      valueFiles:
+        - values.yaml
+        - values.development.yaml
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
+      - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5

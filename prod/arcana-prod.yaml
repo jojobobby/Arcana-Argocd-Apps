@@ -3,18 +3,37 @@ kind: Application
 metadata:
   name: arcana-prod
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
+  project: default
   destination:
     namespace: arcana-production
     server: https://kubernetes.default.svc
+  # Single Helm chart in the Arcana repo at k8s/Chart.yaml. ArgoCD
+  # renders it with the base values plus the prod overlay; the CI
+  # deploy job rewrites values.production.yaml image tags on each push.
   source:
-    path: k8s
     repoURL: git@github.com:jojobobby/Arcana.git
     targetRevision: main
-  project: default
+    path: k8s
+    helm:
+      releaseName: arcana
+      valueFiles:
+        - values.yaml
+        - values.production.yaml
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
+      - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
