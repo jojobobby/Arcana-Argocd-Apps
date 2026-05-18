@@ -31,7 +31,12 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
-      - ServerSideApply=true
+      # Client-side apply, not server-side. Server-side apply uses
+      # strategic-merge with containerPort as the merge key on the
+      # ports list — renaming or renumbering ports leaves phantom
+      # entries that fail validation with "Duplicate value: appserver".
+      # Client-side `kubectl apply -f` overwrites the spec verbatim.
+      - ServerSideApply=false
     retry:
       limit: 5
       backoff:
