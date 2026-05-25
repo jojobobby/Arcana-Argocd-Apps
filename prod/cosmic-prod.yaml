@@ -4,19 +4,23 @@ metadata:
   name: cosmic-prod
   namespace: argocd
 spec:
+  project: default
   destination:
     namespace: cosmic-production
     server: https://kubernetes.default.svc
   source:
-    path: k8s/Production/
     repoURL: git@github.com:jojobobby/Cosmic-LTS.git
     targetRevision: master
-  project: default
+    path: k8s
+    helm:
+      releaseName: cosmic
+      valueFiles:
+        - values.yaml
+        - values.production.yaml
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - ApplyOutOfSyncOnly=true
       - CreateNamespace=true
-      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true

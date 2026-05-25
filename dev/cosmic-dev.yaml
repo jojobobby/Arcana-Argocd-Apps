@@ -4,26 +4,23 @@ metadata:
   name: cosmic-dev
   namespace: argocd
 spec:
+  project: default
   destination:
     namespace: cosmic-development
     server: https://kubernetes.default.svc
   source:
-    path: k8s/Development/
     repoURL: git@github.com:jojobobby/Cosmic-LTS.git
     targetRevision: development
-  project: default
+    path: k8s
+    helm:
+      releaseName: cosmic
+      valueFiles:
+        - values.yaml
+        - values.development.yaml
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - ApplyOutOfSyncOnly=true
       - CreateNamespace=true
-      - ServerSideApply=true
-      - RespectIgnoreDifferences=true
-  ignoreDifferences:
-    - group: monitoring.coreos.com
-      kind: Prometheus
-      jsonPointers:
-        - /status
-
+      - ApplyOutOfSyncOnly=true
