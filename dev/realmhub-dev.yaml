@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: realmhub-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: realmhub-development
+    server: https://kubernetes.default.svc
+  # Helm chart at k8s/Chart.yaml in the realmhub-service repo. ArgoCD renders it
+  # with the base values plus the dev overlay; CI rewrites values.development.yaml's
+  # image tag on each push to `development`.
+  # NOTE: repoURL must point at wherever realmhub-service is pushed, and ArgoCD
+  # needs read access (deploy key / repo credential).
+  source:
+    repoURL: git@github.com:jojobobby/realmhub-service.git
+    targetRevision: development
+    path: k8s
+    helm:
+      releaseName: realmhub
+      valueFiles:
+        - values.yaml
+        - values.development.yaml
+  # The admin service owns the servers ConfigMap's data at runtime (it patches it
+  # via the k8s API). Ignore /data so selfHeal doesn't revert admin's live edits;
+  # with ApplyOutOfSyncOnly the seeded data is applied once and then left alone.
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: realmhub-servers
+      jsonPointers:
+        - /data
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
