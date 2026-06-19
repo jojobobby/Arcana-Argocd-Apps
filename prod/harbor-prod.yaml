@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: harbor-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: harbor-production
+    server: https://kubernetes.default.svc
+  # Umbrella Helm chart at k8s/Chart.yaml in the Harbor fork (Both/Harbor). It vendors
+  # the upstream goharbor `harbor` chart as a subchart (k8s/charts/harbor-*.tgz) and
+  # layers our base values + the prod overlay on top. Harbor is fully self-managed:
+  # ArgoCD owns the whole stack (core, registry, db, redis, jobservice, trivy, portal).
+  # NOTE: repoURL must point at wherever the Harbor fork is pushed, and ArgoCD needs
+  # read access (deploy key / repo credential), exactly like the other services.
+  source:
+    repoURL: git@github.com:jojobobby/harbor.git
+    targetRevision: main
+    path: k8s
+    helm:
+      releaseName: harbor
+      valueFiles:
+        - values.yaml
+        - values.production.yaml
+  # Harbor's chart auto-generates several internal secrets (registry htpasswd, csrf
+  # key, etc.) on first install and stores them in cluster Secrets. Don't let selfHeal
+  # fight Harbor over those generated values once they exist.
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
