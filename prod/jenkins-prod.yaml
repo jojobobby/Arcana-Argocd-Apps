@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jenkins-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: jenkins-production
+    server: https://kubernetes.default.svc
+  # Umbrella Helm chart at k8s/Chart.yaml in the Jenkins fork (Both/Jenkins). It vendors
+  # the upstream jenkinsci `jenkins` chart as a subchart (k8s/charts/jenkins-*.tgz) and
+  # layers our values on top. Jenkins is production-only (no dev Application) and fully
+  # self-managed: ArgoCD owns the whole stack (controller, JENKINS_HOME PVC, RBAC,
+  # ingress); builds run in ephemeral Kubernetes agent pods in the same namespace.
+  #
+  # DO NOT push this file until the source repo actually exists — the app-of-apps
+  # auto-syncs prod/, so an unreachable repoURL means a permanent ComparisonError.
+  # Before committing here: (1) create the jojobobby/jenkins fork on GitHub,
+  # (2) commit & push the k8s/ chart to its `master` branch, (3) make sure ArgoCD
+  # has read access (SSH repo credential — required even for a public fork, since
+  # this repoURL is SSH). targetRevision is `master` because the jenkinsci/jenkins
+  # fork keeps upstream's default branch name (same as Cosmic).
+  source:
+    repoURL: git@github.com:jojobobby/jenkins.git
+    targetRevision: master
+    path: k8s
+    helm:
+      releaseName: jenkins
+      valueFiles:
+        - values.yaml
+        - values.production.yaml
+  # Unlike the Harbor app there is no ignoreDifferences guard on Secrets: with
+  # controller.admin.existingSecret set, the chart renders NO Secret resources at
+  # all. The admin Secret (jenkins-admin-secret) lives entirely outside ArgoCD's
+  # ownership — it just has to exist in the namespace before the controller pod
+  # can mount it (see k8s/secret.example.yaml in the Jenkins repo).
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
