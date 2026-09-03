@@ -1,0 +1,61 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: monitoring
+    server: https://kubernetes.default.svc
+  # Umbrella Helm chart at monitoring/ in the jojobobby/Argocd infra repo (Both/Argocd),
+  # next to the cnpg-operator and ArgoCD self-management charts. It vendors
+  # kube-prometheus-stack, loki and alloy as subcharts (monitoring/charts/*.tgz) and
+  # layers our values on top. One cluster-wide instance (namespace `monitoring`)
+  # scrapes every namespace, so there is no dev/prod split for the stack itself -
+  # the Cosmic dev and prod environments each declare their own ServiceMonitors,
+  # alerts and dashboard from the Cosmic chart.
+  #
+  # Prerequisite (never in git): the `grafana-admin-secret` Secret in `monitoring`
+  # (keys admin-user / admin-password) - see monitoring/secret.example.yaml.
+  source:
+    repoURL: git@github.com:jojobobby/Argocd.git
+    targetRevision: HEAD
+    path: monitoring/
+    helm:
+      releaseName: monitoring
+      valueFiles:
+        - values.yaml
+  # cert-manager issues the prometheus-operator admission-webhook certificate and its
+  # cainjector writes the CA into the webhook configurations at runtime. Don't let
+  # selfHeal fight it over that field.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      # Mandatory: the prometheus-operator CRDs are far bigger than the client-side
+      # apply annotation limit. Also lets ArgoCD adopt the CRDs that are already in
+      # the cluster from the earlier (May 2026) attempt.
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
