@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: haproxy-ingress
+  namespace: argocd
+spec:
+  destination:
+    namespace: haproxy-ingress
+    server: https://kubernetes.default.svc
+  # The cluster's ingress controller (haproxytech kubernetes-ingress), adopted from the
+  # hand-installed Helm release of the same name on 2026-09-03 - see
+  # haproxy-ingress/README.md in the Argocd repo. releaseName MUST stay `haproxy-ingress`:
+  # every resource name (haproxy-ingress-kubernetes-ingress) and the controller's
+  # --configmap / --publish-service arguments derive from it. No finalizer on purpose -
+  # deleting this Application must never cascade into deleting the ingress controller.
+  source:
+    path: haproxy-ingress/
+    repoURL: git@github.com:jojobobby/Argocd.git
+    targetRevision: HEAD
+    helm:
+      releaseName: haproxy-ingress
+      valueFiles:
+        - values.yaml
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
