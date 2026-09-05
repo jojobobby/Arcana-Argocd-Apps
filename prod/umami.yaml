@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: umami
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: umami
+    server: https://kubernetes.default.svc
+  # Umami web analytics for the Cosmic shop: plain Helm chart at umami/ in the
+  # jojobobby/Argocd infra repo (Both/Argocd), next to the monitoring stack. One
+  # cluster-wide instance at analytics.cosmicv2.com; the dev and prod shops are two
+  # "websites" inside it, so there is no dev/prod split for the server itself.
+  # Needs the cnpg-operator app (its PostgreSQL is a CloudNativePG Cluster).
+  source:
+    repoURL: git@github.com:jojobobby/Argocd.git
+    targetRevision: HEAD
+    path: umami/
+    helm:
+      releaseName: umami
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
