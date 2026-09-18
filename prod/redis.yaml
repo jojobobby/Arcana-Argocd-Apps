@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: redis
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: redis
+    server: https://kubernetes.default.svc
+  # Self-managed Redis for tidangames.com services: a plain Helm chart at the root of
+  # jojobobby/tidan-redis (Both/Redis). One persistent Redis 8 StatefulSet plus
+  # RedisInsight at rdb.tidangames.com (haproxy basic auth). Cluster-wide, so no
+  # dev/prod split.
+  #
+  # Prerequisites (never in git): Secrets `redis-auth` (password,
+  # insight-encryption-key) and `redisinsight-basic-auth` (<user>: crypt hash) in
+  # `redis` - see secret.example.yaml in that repo.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-redis.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: redis
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5

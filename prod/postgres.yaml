@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: postgres
+    server: https://kubernetes.default.svc
+  # Self-managed PostgreSQL for tidangames.com services: a plain Helm chart at the root
+  # of jojobobby/tidan-postgres (Both/Postgres). One CloudNativePG Cluster plus pgAdmin
+  # at pdb.tidangames.com. Cluster-wide, so no dev/prod split. Needs the cnpg-operator
+  # app.
+  #
+  # Prerequisite (never in git): the `pgadmin-admin` Secret in `postgres`
+  # (keys email / password) - see secret.example.yaml in that repo.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-postgres.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: postgres
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
