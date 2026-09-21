@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backups
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: backups
+    server: https://kubernetes.default.svc
+  # Monthly backup CronJob (Postgres + Redis + OpenBao -> zip -> emailed via the `mail`
+  # relay) at the root of jojobobby/tidan-backups (Both/Backups). Namespace `backups`.
+  #
+  # Prerequisites (never in git): Secrets `backup-postgres` (username/password, copied from
+  # postgres-superuser), `backup-redis` (password, from redis-auth) and `backup-openbao`
+  # (token with the `backup` policy) in `backups` - see secret.example.yaml in that repo.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-backups.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: backups
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
