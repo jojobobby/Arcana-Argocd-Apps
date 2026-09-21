@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: inbox
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: inbox
+    server: https://kubernetes.default.svc
+  # Self-hosted mailbox (docker-mailserver) at the root of jojobobby/tidan-inbox
+  # (Both/Inbox). Receives mail on the node's port 25, serves IMAPS 993 + submission
+  # 465/587 (hostPort), files spam to Junk, relays outbound through the `mail` app.
+  #
+  # Prerequisites (never in git): Secrets `mailbox-accounts` (postfix-accounts.cf) and
+  # `mail.tidangames.com-tls` (TLS seed) in `inbox` - see secret.example.yaml in that repo.
+  # Needs the A record mail.tidangames.com -> 147.135.8.100 for the real cert + MX.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-inbox.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: inbox
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
