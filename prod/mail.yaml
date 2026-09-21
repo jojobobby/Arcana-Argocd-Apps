@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mail
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: mail
+    server: https://kubernetes.default.svc
+  # Self-hosted send-only SMTP relay (Postfix + OpenDKIM) at the root of
+  # jojobobby/tidan-mail (Both/Mail). Internal only, mail.mail.svc:587; other pods submit
+  # and it delivers directly to recipient MX with DKIM. No ingress, no out-of-band Secret
+  # (DKIM key auto-generates onto a PVC). The `backups` job sends through it.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-mail.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: mail
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
