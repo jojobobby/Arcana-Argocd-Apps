@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arcana-backups
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: arcana-backups
+    server: https://kubernetes.default.svc
+  # Monthly backup of the Arcana file-based database (production + development), at the
+  # root of jojobobby/arcana-backups (Both/ArcanaBackups). A CronJob execs into the Arcana
+  # game + website pods, tars each /app/Database, zips and emails it to the mailbox. Grants
+  # its ServiceAccount exec ONLY in arcana-production + arcana-development (RoleBindings in
+  # those namespaces).
+  #
+  # Prerequisite (never in git): Secret `backup-inbox` (mailbox username/password) in
+  # `arcana-backups` - see secret.example.yaml in that repo.
+  source:
+    repoURL: git@github.com:jojobobby/arcana-backups.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: arcana-backups
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
