@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wiki
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: wiki
+    server: https://kubernetes.default.svc
+  # Docmost company wiki (Confluence alternative) at the root of jojobobby/tidan-wiki
+  # (Both/Wiki), served at wiki.company.tidangames.com. Data in the shared Postgres
+  # (database docmost) + Redis db 1. Needs the out-of-band Secret wiki/docmost-env and
+  # the A record wiki.company.tidangames.com -> 147.135.8.100.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-wiki.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: wiki
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
