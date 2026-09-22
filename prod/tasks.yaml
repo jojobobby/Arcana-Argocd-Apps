@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tasks
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: tasks
+    server: https://kubernetes.default.svc
+  # Plane CE issue tracker (Jira alternative), umbrella chart at the root of
+  # jojobobby/tidan-tasks (Both/Tasks), served at tasks.company.tidangames.com. Data in
+  # the shared Postgres (database plane) + Redis db 2; RabbitMQ + MinIO bundled. Needs the
+  # four out-of-band Secrets in `tasks` (see the repo's secret.example.yaml) and the A
+  # record tasks.company.tidangames.com -> 147.135.8.100.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-tasks.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: plane
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
