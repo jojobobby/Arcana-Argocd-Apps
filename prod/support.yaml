@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: support
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: support
+    server: https://kubernetes.default.svc
+  # Zammad player-support helpdesk (Jira Service Management alternative), umbrella chart
+  # at the root of jojobobby/tidan-support (Both/Support), served at
+  # support.tidangames.com. Data in the shared Postgres (database zammad) + Redis db 3.
+  # Needs the out-of-band Secrets support/zammad-db + support/zammad-redis and the A
+  # record support.tidangames.com -> 147.135.8.100.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-support.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: zammad
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
