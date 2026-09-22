@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: webmail
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: webmail
+    server: https://kubernetes.default.svc
+  # SnappyMail webmail at the root of jojobobby/tidan-webmail (Both/Webmail). Browser
+  # front-end for the `inbox` mailbox at inbox.company.tidangames.com; logs into
+  # mail.tidangames.com over TLS. Needs the A record inbox.company.tidangames.com ->
+  # 147.135.8.100 for the cert. Admin panel disabled + domain pinned on the server.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-webmail.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: webmail
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
