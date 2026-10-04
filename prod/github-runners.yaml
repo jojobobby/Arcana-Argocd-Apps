@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: github-runners
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: github-runners
+    server: https://kubernetes.default.svc
+  # Runner pools (one per repo, label github-runners) + shared rootless BuildKit. Needs Secret github-runners/github-runners-token.
+  # Chart at runners/ in jojobobby/github-runners (Both/GithubRunners).
+  source:
+    repoURL: git@github.com:jojobobby/github-runners.git
+    targetRevision: main
+    path: runners
+    helm:
+      releaseName: github-runners
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
