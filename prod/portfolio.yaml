@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: portfolio
+    server: https://kubernetes.default.svc
+  # rrobinson.me portfolio: Helm chart at deploy/ in the PUBLIC repo jojobobby/portfolio
+  # (Both/Portfolio). CI builds ghcr.io/jojobobby/portfolio (public) and bumps image.tag;
+  # this app rolls it out. Needs the A record rrobinson.me -> the node IP (Cloudflare).
+  source:
+    repoURL: git@github.com:jojobobby/portfolio.git
+    targetRevision: main
+    path: deploy
+    helm:
+      releaseName: portfolio
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
