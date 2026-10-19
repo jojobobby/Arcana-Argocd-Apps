@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: agency
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: agency
+    server: https://kubernetes.default.svc
+  # Agency backend (AI services business: leads, call scripts, demo websites) from
+  # jojobobby/tidan-agency (Both/Agency), chart in deploy/, served at agency.tidangames.com.
+  # Its own CloudNativePG cluster agency-db. Secrets ghcr-pull and agency-env are created out
+  # of band in namespace agency (see the repo's deploy/secret.example.yaml). The AI agent runs
+  # on the mini PC, not here. A record agency.tidangames.com -> 147.135.8.100.
+  source:
+    repoURL: git@github.com:jojobobby/tidan-agency.git
+    targetRevision: main
+    path: deploy
+    helm:
+      releaseName: agency
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
