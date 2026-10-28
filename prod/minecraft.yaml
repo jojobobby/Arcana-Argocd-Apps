@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minecraft
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: minecraft
+    server: https://kubernetes.default.svc
+  # Minecraft Java Edition servers (Paper on 25565, Vanilla on 25566, hostPorts on
+  # 147.135.8.100) from the root of jojobobby/tidan-minecraft (Both/Minecraft). Needs the
+  # out-of-band Secret minecraft/minecraft-rcon, the A record mc.tidangames.com and the SRV
+  # record for vanilla.mc.tidangames.com (README).
+  source:
+    repoURL: git@github.com:jojobobby/tidan-minecraft.git
+    targetRevision: main
+    path: .
+    helm:
+      releaseName: minecraft
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  revisionHistoryLimit: 5
