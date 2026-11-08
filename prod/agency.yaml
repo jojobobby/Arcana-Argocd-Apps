@@ -24,6 +24,10 @@ spec:
       valueFiles:
         - values.yaml
   syncPolicy:
+    # Asks for the shared ghcr-pull Secret (Argocd external-secrets, ClusterExternalSecret).
+    managedNamespaceMetadata:
+      labels:
+        tidangames.com/ghcr-pull: "true"
     automated:
       prune: true
       selfHeal: true
