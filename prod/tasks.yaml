@@ -3,8 +3,6 @@ kind: Application
 metadata:
   name: tasks
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/compare-options: ServerSideDiff=false
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -25,24 +23,6 @@ spec:
       releaseName: plane
       valueFiles:
         - values.yaml
-  # The Plane chart stamps `timestamp: {{ now }}` on every pod template, so each render looks
-  # changed: the migrate Job's template is immutable, which broke the server-side diff (sync
-  # status Unknown), and every Deployment would restart on each sync. Ignore that one annotation
-  # (and keep it out of applies). Client-side diff, because the cluster-wide server-side diff
-  # dry-runs the Job before ignoreDifferences can apply.
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jqPathExpressions:
-        - .spec.template.metadata.annotations.timestamp
-    - group: apps
-      kind: StatefulSet
-      jqPathExpressions:
-        - .spec.template.metadata.annotations.timestamp
-    - group: batch
-      kind: Job
-      jqPathExpressions:
-        - .spec.template.metadata.annotations.timestamp
   syncPolicy:
     automated:
       prune: true
@@ -51,7 +31,6 @@ spec:
       - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
       - ServerSideApply=true
-      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
